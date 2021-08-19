@@ -3,6 +3,11 @@
 // Re-export pallet items so that they can be accessed from the crate namespace.
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
@@ -14,6 +19,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// Max length of proof data
+		type ProofMaxLength: Get<usize>;
 	}
 	// Pallets use events to inform users when important changes are made.
 	// Event documentation should end with an array that provides descriptive names for parameters.
@@ -37,6 +44,8 @@ pub mod pallet {
 		NoSuchProof,
 		/// The proof is claimed by another account, so caller can't revoke it.
 		NotProofOwner,
+		/// The length of proof data exceeded the max length limit
+		ProofTooLong,
 	}
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -55,6 +64,9 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(1_000)]
 		pub fn create_claim(origin: OriginFor<T>, proof: Vec<u8>) -> DispatchResultWithPostInfo {
+			// Check max length of proof data
+			ensure!(proof.len() <= T::ProofMaxLength::get(), Error::<T>::ProofTooLong);
+
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
@@ -101,7 +113,11 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(5_000)]
-		pub fn transfer_claim(origin: OriginFor<T>, to: T::AccountId, proof: Vec<u8>) -> DispatchResultWithPostInfo {
+		pub fn transfer_claim(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			proof: Vec<u8>,
+		) -> DispatchResultWithPostInfo {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
@@ -124,5 +140,5 @@ pub mod pallet {
 
 			Ok(().into())
 		}
-    }
+	}
 }

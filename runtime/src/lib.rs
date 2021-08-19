@@ -251,6 +251,7 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	pub const TransactionByteFee: Balance = 1;
+	pub const ProofMaxLength: usize = 32;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -272,6 +273,7 @@ impl pallet_template::Config for Runtime {
 
 impl pallet_poe::Config for Runtime {
 	type Event = Event;
+	type ProofMaxLength = ProofMaxLength;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
