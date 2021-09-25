@@ -3,16 +3,21 @@
 // Re-export pallet items so that they can be accessed from the crate namespace.
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
-	use sp_std::vec::Vec; // Step 3.1 will include this in `Cargo.toml`
+	use sp_std::vec::Vec;
+	use crate::weights::WeightInfo;
+	use core::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -21,6 +26,8 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Max length of proof data
 		type ProofMaxLength: Get<usize>;
+		//
+		type WeightInfo: WeightInfo;
 	}
 	// Pallets use events to inform users when important changes are made.
 	// Event documentation should end with an array that provides descriptive names for parameters.
@@ -62,7 +69,7 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(1_000)]
+		#[pallet::weight(T::WeightInfo::create_claim(proof.len().try_into().unwrap()))]
 		pub fn create_claim(origin: OriginFor<T>, proof: Vec<u8>) -> DispatchResultWithPostInfo {
 			// Check max length of proof data
 			ensure!(proof.len() <= T::ProofMaxLength::get(), Error::<T>::ProofTooLong);
@@ -87,7 +94,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::revoke_claim(proof.len().try_into().unwrap()))]
 		pub fn revoke_claim(origin: OriginFor<T>, proof: Vec<u8>) -> DispatchResultWithPostInfo {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
@@ -112,7 +119,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(5_000)]
+		#[pallet::weight(T::WeightInfo::transfer_claim(proof.len().try_into().unwrap()))]
 		pub fn transfer_claim(
 			origin: OriginFor<T>,
 			to: T::AccountId,
